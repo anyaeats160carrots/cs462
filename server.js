@@ -2,7 +2,7 @@
 var http = require('http');
 var url = require('url');
 var uuid = require('node-uuid');
-var Worker = require('webworker-threads').Worker;
+var Threads= require('webworker-threads');
 
 
 const PORT=8088; 
@@ -46,13 +46,17 @@ server.listen(PORT, function(){
     console.log("Server listening on: http://localhost:%s", PORT);
 });
 
-function createNode() {
+function createNode(originID) {
     var UUID = uuid.v1();
     var peers = createRandomPeers();
     nodes.push({"id": UUID, "peers": peers});
-    
+    var node = Threads.create();
+    node.q = [];
+    node.msgs = [];
+    node.wants = [];
+    node.propagate();
+    node.handle();
     return UUID;
-    //start a thread that propagates and a thread that responds
 }
 
 function createRandomPeers(UUID) {
@@ -100,12 +104,12 @@ function handle(id, msg) {
     if (  msg.Rumor ) {
         msgs.push(msg);
     } else if ( msg.Want ) {
-        work_queue = addWorkToQueue(t)
-        foreach w work_queue {
-        s = prepareMsg(state, w)
-        <url> = getUrl(w)
-        send(<url>, s)
-        state = update(state, s)
+        wants.push(msg);
+        for (var want in wants) {
+            var s = prepareMsg(state, w);
+        }
+        var url = msg.Endpoint;
+        q.add(url);
         }
     }
 }

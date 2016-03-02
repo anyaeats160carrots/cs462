@@ -2,8 +2,13 @@
 var http = require('http');
 var url = require('url');
 var uuid = require('node-uuid');
+var Worker = require('webworker-threads').Worker;
+
 
 const PORT=8088; 
+
+cost n = 5;
+
 
 var nodes = [];
 var rumors = [];
@@ -13,14 +18,22 @@ function handleRequest(request, response){
     if (q == "create") {
         var id = createNode();
         response.redirect(request.url + '/' + id);
-        response.sendfile('UI.html');
         response.end();
     }
-    else if (q == "rumor") {
-        //id = 
-    }
-    else if (q = "") {
-        //if request to specific node, forward to that thread
+    else 
+    {
+        id = url.parse(request.url, true).query.pathname;
+        if (q == "rumor") {
+            var name = request.body.name;
+            var text = request.body.text;
+            var rumor = {"Rumor" : {"MessageID": id, "Originator": name, "Text": text}, "EndPoint": request.url}};
+            addRumor(id, rumor);
+        }
+        else {
+            handle(id, body);
+        }
+        response.sendfile('UI.html');
+        response.end();
     }
 }
 
@@ -54,32 +67,45 @@ function createRandomPeers(UUID) {
     return peers;
 }
 
-function propagate() {
+function propagate(originURL) {
     while (true) {
-        for (peer in peers) {
+        for (var peer in peers) {
+            var msg = msgs.pop();
+            if (msg.EndPoint == originURL)
+                msg.Rumor.MessageID += ":" + counter.toString();
+            var url = q.pop();
+            var post_data = querystring.stringify(msg);
+            var post_options = {
+                host: originURL,
+                port: 8085,
+                method: 'POST'};
+
+            var post_req = http.request(post_options, function(res) {
+                res.setEncoding('utf8');
+                res.on('data', function (chunk) {
+                    console.log('Response: ' + chunk);
+                });
+            });
+
+            post_req.write(post_data);
+            post_req.end();
+            sleep(n);
             
         }             
-        //s = prepareMsg(state, q)       
-        //<url> = lookup(q);
-        //send (<url>, s) ;             
-        //sleep n;
     }
 }
-//Each node will also provide an HTTP endpoint that responds to POST of valid messages in the following way:
 
-function handle() {
-    /*
-t = getMessage();
-if (  isRumor(t)  ) {
-     store(t)
-} elsif ( isWant(t) ) {
-    work_queue = addWorkToQueue(t)
-    foreach w work_queue {
-      s = prepareMsg(state, w)
-      <url> = getUrl(w)
-      send(<url>, s)
-      state = update(state, s)
+
+function handle(id, msg) {
+    if (  msg.Rumor ) {
+        msgs.push(msg);
+    } else if ( msg.Want ) {
+        work_queue = addWorkToQueue(t)
+        foreach w work_queue {
+        s = prepareMsg(state, w)
+        <url> = getUrl(w)
+        send(<url>, s)
+        state = update(state, s)
+        }
     }
-}
-*/
 }
